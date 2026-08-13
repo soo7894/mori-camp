@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#efc85b" />
+    <meta
+      name="description"
+      content="작은 숲 캠핑장을 운영하고 직접 캠핑을 즐기는 Three.js 디오라마 게임"
+    />
+    <title>MORI CAMP — 작은 숲 캠핑장</title>
+  </head>
+  <body>
+    <main id="app">
+      <div id="scene-wrap" aria-label="3D 캠핑장">
+        <canvas id="game-canvas"></canvas>
+      </div>
+
+      <div id="loading-screen">
+        <div class="loading-mark">
+          <span class="loading-tree">▲</span>
+          <span class="loading-fire">◆</span>
+        </div>
+        <p class="loading-title">MORI CAMP</p>
+        <p class="loading-copy">숲을 깨우는 중...</p>
+        <div class="loading-bar"><span></span></div>
+      </div>
+
+      <header class="topbar ui-layer">
+        <div class="brand-card">
+          <div class="brand-icon" aria-hidden="true">
+            <span>▲</span><i></i>
+          </div>
+          <div>
+            <p class="eyebrow">COZY CAMP TYCOON</p>
+            <h1>MORI CAMP</h1>
+          </div>
+        </div>
+
+        <div class="resource-bar" aria-label="캠핑장 자원">
+          <div class="resource-chip sun-chip">
+            <span class="chip-icon">☀</span>
+            <div><small id="day-label">DAY 01</small><strong id="time-label">08:00</strong></div>
+          </div>
+          <div class="resource-chip">
+            <span class="chip-icon coin-icon">●</span>
+            <div><small>보유 골드</small><strong id="money-label">2,400 G</strong></div>
+          </div>
+          <div class="resource-chip">
+            <span class="chip-icon heart-icon">♥</span>
+            <div><small>캠핑장 평판</small><strong id="reputation-label">12</strong></div>
+          </div>
+          <div class="resource-chip guest-resource">
+            <span class="chip-icon">♟</span>
+            <div><small>오늘의 캠퍼</small><strong id="guest-label">3 / 8</strong></div>
+          </div>
+        </div>
+      </header>
+
+      <section class="overview-card glass-card ui-layer">
+        <div class="card-kicker"><span></span> TODAY'S CAMP</div>
+        <h2>초록별 숲 캠핑장</h2>
+        <p class="weather-line"><span class="weather-icon">☀</span> 맑고 선선해요 <b>22°C</b></p>
+
+        <div class="stat-list">
+          <div class="stat-row">
+            <div class="stat-copy"><span>캠퍼 만족도</span><b id="satisfaction-label">82%</b></div>
+            <div class="progress"><i id="satisfaction-bar" style="width: 82%"></i></div>
+          </div>
+          <div class="stat-row">
+            <div class="stat-copy"><span>캠핑장 청결도</span><b id="clean-label">91%</b></div>
+            <div class="progress mint"><i id="clean-bar" style="width: 91%"></i></div>
+          </div>
+        </div>
+
+        <div class="daily-mission">
+          <span class="mission-stamp">오늘</span>
+          <div><small>데일리 미션</small><strong id="mission-label">캠퍼 5명 맞이하기</strong></div>
+          <span class="mission-count" id="mission-count">3/5</span>
+        </div>
+
+        <button class="primary-button" id="clean-button">
+          <span>✦</span> 캠핑장 정돈하기 <em>80 G</em>
+        </button>
+      </section>
+
+      <section class="booking-card glass-card ui-layer" id="booking-card">
+        <div class="booking-head">
+          <div>
+            <div class="card-kicker"><span></span> RESERVATION</div>
+            <h2>새 예약이 도착했어요</h2>
+          </div>
+          <button class="icon-button" id="booking-toggle" aria-label="예약창 접기">−</button>
+        </div>
+        <div class="booking-body">
+          <div class="guest-avatar" aria-hidden="true"><span>●</span><i></i></div>
+          <div class="booking-copy">
+            <strong id="booking-name">해솔 가족 · 3명</strong>
+            <span id="booking-request">텐트 사이트 · 모닥불 선호</span>
+            <div class="booking-tags"><b>2박</b><b>+420 G</b><b>평판 +2</b></div>
+          </div>
+        </div>
+        <div class="booking-actions">
+          <button class="text-button" id="decline-booking">나중에</button>
+          <button class="accept-button" id="accept-booking">예약 받기 <span>→</span></button>
+        </div>
+      </section>
+
+      <section class="selection-card glass-card ui-layer" id="selection-card" aria-live="polite">
+        <button class="selection-close" id="selection-close" aria-label="닫기">×</button>
+        <div class="selection-emoji" id="selection-emoji">⛺</div>
+        <div>
+          <small id="selection-type">FACILITY</small>
+          <h3 id="selection-name">포레스트 텐트</h3>
+          <p id="selection-description">나무 향이 가득한 2인용 텐트입니다.</p>
+        </div>
+        <div class="selection-meta">
+          <span>수익 <b id="selection-income">+65 G</b></span>
+          <span>상태 <b id="selection-status">좋음</b></span>
+        </div>
+        <button class="primary-button compact" id="upgrade-button">시설 업그레이드 <em id="upgrade-cost">240 G</em></button>
+      </section>
+
+      <div class="mode-switch ui-layer" role="tablist" aria-label="게임 모드">
+        <button class="active" data-mode="manage" role="tab"><span>⌂</span> 캠핑장 운영</button>
+        <button data-mode="camp" role="tab"><span>♨</span> 직접 캠핑</button>
+      </div>
+
+      <section class="camp-guide ui-layer" id="camp-guide" aria-live="polite">
+        <div class="camp-guide-head">
+          <span>MY CAMP</span>
+          <b id="camp-progress">0 / 22</b>
+        </div>
+        <h2 id="camp-task-title">빈 사이트를 내 손으로 완성해요</h2>
+        <p id="camp-task-text">비어 있는 사이트를 직접 눌러 오늘 머물 자리를 정해주세요.</p>
+        <div class="camp-progress-track"><i id="camp-progress-bar"></i></div>
+        <div class="camp-guide-foot">
+          <small id="camp-tool-label">맨손</small>
+          <button id="camp-reset" type="button">↻ 캠핑 준비 다시하기</button>
+        </div>
+      </section>
+
+      <nav class="action-dock ui-layer" id="manage-dock" aria-label="건설 메뉴">
+        <div class="dock-label"><span>BUILD</span><b>새 시설 놓기</b></div>
+        <button class="dock-item" data-build="tent">
+          <span class="dock-visual tent-visual">▲</span><b>숲 텐트</b><small>320 G</small>
+        </button>
+        <button class="dock-item" data-build="glamping">
+          <span class="dock-visual cabin-visual">⌂</span><b>글램핑</b><small>780 G</small>
+        </button>
+        <button class="dock-item" data-build="firepit">
+          <span class="dock-visual fire-visual">◆</span><b>모닥불장</b><small>260 G</small>
+        </button>
+        <button class="dock-item" data-build="shop">
+          <span class="dock-visual shop-visual">▣</span><b>캠핑 매점</b><small>640 G</small>
+        </button>
+        <button class="dock-item locked" data-build="caravan">
+          <span class="dock-visual caravan-visual">▰</span><b>카라반</b><small>평판 20</small>
+          <i>LOCK</i>
+        </button>
+      </nav>
+
+      <nav class="action-dock camp-dock hands-on-dock ui-layer" id="camp-dock" aria-label="직접 캠핑 도구">
+        <div class="dock-label"><span>GEAR</span><b>장비를 골라 직접 클릭</b></div>
+        <button class="dock-item" data-camp-action="tent">
+          <span class="dock-visual tent-visual">▲</span><b>텐트 펼치기</b><small>사이트에 펼쳐요</small>
+        </button>
+        <button class="dock-item" data-camp-action="poles">
+          <span class="dock-visual water-visual">⌁</span><b>폴대 조립하기</b><small>텐트 뼈대 세우기</small>
+        </button>
+        <button class="dock-item" data-camp-action="hammer">
+          <span class="dock-visual fire-visual">┓</span><b>망치 들기</b><small>말뚝 4개 클릭</small>
+        </button>
+        <button class="dock-item" data-camp-action="table">
+          <span class="dock-visual cabin-visual">▰</span><b>테이블 꺼내기</b><small>땅을 눌러 배치</small>
+        </button>
+        <button class="dock-item" data-camp-action="chair">
+          <span class="dock-visual shop-visual">▥</span><b>의자 꺼내기</b><small>땅을 눌러 배치</small>
+        </button>
+        <button class="dock-item" data-camp-action="burner">
+          <span class="dock-visual fire-visual">◎</span><b>버너 꺼내기</b><small>테이블 옆에 배치</small>
+        </button>
+        <button class="dock-item" data-camp-action="meal">
+          <span class="dock-visual shop-visual">▣</span><b>식사 준비</b><small>버너로 요리하기</small>
+        </button>
+        <button class="dock-item" data-camp-action="coffee">
+          <span class="dock-visual water-visual">♨</span><b>커피 내리기</b><small>불을 먼저 켜요</small>
+        </button>
+        <button class="dock-item" data-camp-action="wash">
+          <span class="dock-visual water-visual">≈</span><b>설거지 시작</b><small>식기를 직접 닦아요</small>
+        </button>
+        <button class="dock-item" data-camp-action="store">
+          <span class="dock-visual cabin-visual">▤</span><b>식기 정리</b><small>수납함에 넣기</small>
+        </button>
+        <button class="dock-item" data-camp-action="lantern">
+          <span class="dock-visual shop-visual">✦</span><b>조명 설치</b><small>원하는 곳에 배치</small>
+        </button>
+        <button class="dock-item" data-camp-action="campfire">
+          <span class="dock-visual wood-visual">⌁</span><b>화로·장작 놓기</b><small>불멍 자리 만들기</small>
+        </button>
+        <button class="dock-item" data-camp-action="firewatch">
+          <span class="dock-visual fire-visual">◆</span><b>불멍하기</b><small>모닥불 앞에 앉기</small>
+        </button>
+        <button class="dock-item" data-camp-action="sleep">
+          <span class="dock-visual tent-visual">☾</span><b>잠자기</b><small>텐트에서 취침</small>
+        </button>
+        <div class="energy-box">
+          <span>나의 에너지</span>
+          <div class="energy-track"><i id="energy-bar" style="width: 72%"></i></div>
+          <b id="energy-label">72</b>
+        </div>
+      </nav>
+
+      <div class="camera-hint ui-layer" id="camera-hint">
+        <span class="mouse-icon"></span>
+        드래그해서 둘러보고 · 휠로 확대하세요
+      </div>
+
+      <div id="toast" class="toast ui-layer" role="status" aria-live="polite">
+        <span id="toast-icon">✓</span><p id="toast-text">캠핑장에 오신 걸 환영해요!</p>
+      </div>
+
+      <div id="floating-layer" class="floating-layer" aria-hidden="true"></div>
+    </main>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

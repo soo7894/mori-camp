@@ -1,0 +1,21 @@
+{
+  "name": "mori-camp-threejs",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "desktop": "pnpm build && electron .",
+    "build:win": "pnpm build && node scripts/build-windows.cjs"
+  },
+  "dependencies": {
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "electron": "39.1.2",
+    "vite": "8.2.1"
+  }
+}
