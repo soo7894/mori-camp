@@ -427,9 +427,9 @@ function nextCampInstruction() {
   if (!camp.coffeeBrewed) return ['따뜻한 커피 내리기', '식사를 마쳤어요. 버너로 커피를 천천히 내려주세요.'];
   if (!camp.coffeeDrunk) return ['커피 한 모금', '테이블 위에 생긴 머그컵을 직접 클릭해 마셔보세요.'];
   if (camp.burnerOn) return ['버너 불 끄기', '요리가 끝났어요. 버너를 직접 클릭해 안전하게 불을 꺼주세요.'];
-  if (!camp.dishwashingStarted) return ['설거지 준비', '설거지 통과 물을 준비해 사용한 식기를 씻어볼까요?'];
-  if (camp.dishesScrubbed < 3) return ['식기 직접 닦기', `파란 설거지 통을 눌러 식기를 꼼꼼하게 닦으세요. (${camp.dishesScrubbed}/3)`];
-  if (!camp.dishesStored) return ['식기 정리', '깨끗해진 식기를 수납함에 차곡차곡 넣어주세요.'];
+  if (!camp.dishwashingStarted) return ['설거지 준비', '베이지색 접이식 설거지통에 물을 받아 사용한 식기를 씻어볼까요?'];
+  if (camp.dishesScrubbed < 3) return ['식기 직접 닦기', `접이식 설거지통을 눌러 식기를 꼼꼼하게 닦으세요. (${camp.dishesScrubbed}/3)`];
+  if (!camp.dishesStored) return ['식기 건조하기', '깨끗해진 식기를 검정 메쉬 건조대에 넣어 물기를 빼주세요.'];
   if (!camp.lanternPlaced) return ['캠핑 조명 설치', '랜턴을 꺼내 원하는 위치의 땅을 클릭해 설치하세요.'];
   if (!camp.lanternOn) return ['조명 켜기', '설치한 노란 랜턴을 직접 클릭해 사이트를 밝혀주세요.'];
   if (!camp.campfirePlaced) return ['불멍 자리 준비', '화로와 장작을 꺼내 원하는 자리에 직접 배치하세요.'];
@@ -520,11 +520,11 @@ function chooseCampAction(action) {
   } else if (action === 'wash') {
     state.campSetup.dishwashingStarted = true;
     world.startDishwashing();
-    showToast('물과 세제를 준비했어요. 설거지 통을 세 번 눌러 닦아주세요.', '≈');
+    showToast('접이식 캠핑 설거지통에 물과 세제를 준비했어요. 통을 세 번 눌러 닦아주세요.', '≈');
   } else if (action === 'store') {
     state.campSetup.dishesStored = true;
     world.storeDishes();
-    showToast('마른 식기를 수납함에 차곡차곡 정리했어요.', '▤');
+    showToast('씻은 식기를 걸이형 메쉬 건조대에 넣어 물기를 빼고 있어요.', '▤');
   } else if (action === 'firewatch') {
     state.campSetup.fireWatched = true;
     world.enjoyCampfire();

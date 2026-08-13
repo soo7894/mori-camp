@@ -164,6 +164,8 @@ export class CampWorld {
     this.campTool = null;
     this.placement = null;
     this.isSeated = false;
+    this.seatedOnChair = false;
+    this.seatedHeight = 0.16;
     this.isNight = false;
 
     this.scene = new THREE.Scene();
@@ -955,6 +957,10 @@ export class CampWorld {
         ? [this.handsOn.grill, this.handsOn.soupPot]
         : [];
     attachments.filter(Boolean).forEach((attachment) => attachment.position.add(delta));
+    if (item === 'chair' && this.seatedOnChair) {
+      this.player.position.add(delta);
+      this.playerTarget.add(delta);
+    }
   }
 
   _finishCampItemDrag(event, cancelled = false) {
@@ -986,8 +992,9 @@ export class CampWorld {
     this._disableCampItemMovement(object);
     this.world.remove(object);
     this.handsOn.items[item] = null;
-    if (item === 'chair' && this.isSeated) {
+    if (item === 'chair' && this.seatedOnChair) {
       this.isSeated = false;
+      this.seatedOnChair = false;
       this.player.position.copy(this.handsOn.origin).add(new THREE.Vector3(2.4, 0.12, 2.2));
       this.playerTarget.copy(this.player.position);
     }
@@ -1247,31 +1254,67 @@ export class CampWorld {
     if (this.handsOn.dishBasin) return;
     const anchor = this.handsOn.items.table?.position ?? this.handsOn.origin;
     const basin = new THREE.Group();
-    const tub = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.58, 0.35, 16, 1, true), createMaterial(0x65b9c8));
-    tub.position.y = 0.2;
-    const water = new THREE.Mesh(new THREE.CircleGeometry(0.6, 18), createMaterial(0x9de2e7, { transparent: true, opacity: 0.8 }));
+    const fabricMaterial = createMaterial(0xb9a27a, { flatShading: false, side: THREE.DoubleSide });
+    const tub = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.6, 0.62, 20, 2, true), fabricMaterial);
+    tub.position.y = 0.34;
+    const base = cylinder(0.59, 0.59, 0.08, 0x897456, 20);
+    base.position.y = 0.06;
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.045, 7, 24), createMaterial(0x403d35));
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 0.65;
+    const lowerBand = new THREE.Mesh(new THREE.TorusGeometry(0.61, 0.025, 6, 22), createMaterial(0x8e7858));
+    lowerBand.rotation.x = Math.PI / 2;
+    lowerBand.position.y = 0.09;
+    const water = new THREE.Mesh(new THREE.CircleGeometry(0.65, 20), createMaterial(0x9de2e7, { transparent: true, opacity: 0.78 }));
     water.rotation.x = -Math.PI / 2;
-    water.position.y = 0.37;
+    water.position.y = 0.58;
     const plateA = cylinder(0.32, 0.35, 0.05, palette.cream, 14);
-    plateA.rotation.z = 0.45;
-    plateA.position.set(-0.18, 0.48, 0);
+    plateA.rotation.z = 0.72;
+    plateA.position.set(-0.18, 0.65, 0);
+    const cup = cylinder(0.18, 0.16, 0.32, 0xc9d0c5, 12);
+    cup.rotation.z = -0.4;
+    cup.position.set(0.28, 0.68, -0.12);
+    const sponge = roundedMesh(0.3, 0.08, 0.18, 0xe8c94f, 0.04);
+    sponge.position.set(0.15, 0.63, 0.32);
+    sponge.rotation.y = 0.28;
+    const straps = [];
+    for (const x of [-0.72, 0.72]) {
+      const outerX = x * 1.22;
+      straps.push(
+        rodBetween(new THREE.Vector3(x, 0.54, -0.24), new THREE.Vector3(outerX, 0.86, -0.24), 0.028, 0x403d35, 7),
+        rodBetween(new THREE.Vector3(x, 0.54, 0.24), new THREE.Vector3(outerX, 0.86, 0.24), 0.028, 0x403d35, 7),
+        rodBetween(new THREE.Vector3(outerX, 0.86, -0.24), new THREE.Vector3(outerX, 0.86, 0.24), 0.035, 0x403d35, 7),
+      );
+    }
+    const foldBands = [0.24, 0.42].map((y) => {
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.66 + y * 0.09, 0.012, 5, 24), createMaterial(0x907c5e));
+      band.rotation.x = Math.PI / 2;
+      band.position.y = y;
+      return band;
+    });
+    const label = roundedMesh(0.42, 0.18, 0.025, 0xe3d6bb, 0.04);
+    label.position.set(0, 0.35, 0.69);
+    const labelMark = roundedMesh(0.2, 0.025, 0.012, 0x6e654f, 0.008);
+    labelMark.position.set(0, 0.35, 0.71);
     const bubbles = [];
     for (let index = 0; index < 7; index += 1) {
       const bubble = new THREE.Mesh(
         new THREE.SphereGeometry(0.07 + (index % 3) * 0.025, 8, 6),
         createMaterial(0xffffff, { transparent: true, opacity: 0.72 }),
       );
-      bubble.position.set((this.random() - 0.5) * 0.8, 0.42 + this.random() * 0.2, (this.random() - 0.5) * 0.55);
+      bubble.position.set((this.random() - 0.5) * 0.8, 0.59 + this.random() * 0.18, (this.random() - 0.5) * 0.55);
       bubbles.push(bubble);
     }
     const hitArea = new THREE.Mesh(
       new THREE.SphereGeometry(0.9, 8, 6),
       new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
     );
-    hitArea.position.y = 0.38;
-    basin.add(tub, water, plateA, ...bubbles, hitArea);
+    hitArea.position.y = 0.5;
+    basin.add(tub, base, rim, lowerBand, ...foldBands, label, labelMark, water, plateA, cup, sponge, ...straps, ...bubbles, hitArea);
     basin.position.set(anchor.x + 0.95, 0.13, anchor.z + 0.55);
     basin.userData.scrubbed = scrubbed;
+    basin.userData.plate = plateA;
+    basin.userData.sponge = sponge;
     this._tagCampObject(basin, 'dishes');
     this.handsOn.dishBasin = basin;
     this.world.add(basin);
@@ -1282,25 +1325,82 @@ export class CampWorld {
     const basin = this.handsOn.dishBasin;
     if (!basin) return 0;
     basin.userData.scrubbed = Math.min(3, (basin.userData.scrubbed ?? 0) + 1);
-    basin.rotation.y += 0.12;
+    basin.userData.plate.rotation.y += 0.7;
+    basin.userData.sponge.rotation.y -= 0.55;
     this.spawnSparkles(basin.position.clone().add(new THREE.Vector3(0, 0.55, 0)), 0xdffcff, 11);
     return basin.userData.scrubbed;
   }
 
   storeDishes() {
-    if (this.handsOn.dishBasin) this.handsOn.dishBasin.visible = false;
+    if (this.handsOn.dishBasin) {
+      this._disableCampInteractions(this.handsOn.dishBasin);
+      this.handsOn.dishBasin.visible = false;
+    }
     if (this.handsOn.dishBox) return;
     const anchor = this.handsOn.items.table?.position ?? this.handsOn.origin;
-    const box = new THREE.Group();
-    const body = roundedMesh(0.95, 0.62, 0.72, 0x6d947f, 0.12);
-    body.position.y = 0.31;
-    const lid = roundedMesh(1.02, 0.12, 0.78, palette.cream, 0.08);
-    lid.position.y = 0.67;
-    box.add(body, lid);
-    box.position.set(anchor.x + 1.05, 0.12, anchor.z + 0.62);
-    this.handsOn.dishBox = box;
-    this.world.add(setShadow(box));
-    this.spawnSparkles(box.position.clone().add(new THREE.Vector3(0, 0.6, 0)), palette.mint, 12);
+    const rack = new THREE.Group();
+    const dark = 0x26312e;
+    const bucketWall = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.62, 0.55, 0.5, 20, 1, true),
+      createMaterial(0x303a36, { side: THREE.DoubleSide }),
+    );
+    bucketWall.position.y = 0.28;
+    const bucketBase = cylinder(0.55, 0.55, 0.08, dark, 20);
+    bucketBase.position.y = 0.05;
+    const bucketRim = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.04, 7, 24), createMaterial(dark));
+    bucketRim.rotation.x = Math.PI / 2;
+    bucketRim.position.y = 0.54;
+
+    const meshBasket = new THREE.Group();
+    const meshWall = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.56, 0.53, 0.94, 18, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x202725, transparent: true, opacity: 0.24, side: THREE.DoubleSide, depthWrite: false }),
+    );
+    meshWall.position.y = 1.03;
+    const meshTop = new THREE.Mesh(new THREE.TorusGeometry(0.56, 0.035, 6, 22), createMaterial(dark));
+    meshTop.rotation.x = Math.PI / 2;
+    meshTop.position.y = 1.5;
+    const meshBottom = new THREE.Mesh(new THREE.TorusGeometry(0.53, 0.035, 6, 22), createMaterial(dark));
+    meshBottom.rotation.x = Math.PI / 2;
+    meshBottom.position.y = 0.56;
+    const netThreads = [];
+    for (let index = 0; index < 10; index += 1) {
+      const angle = (index / 10) * Math.PI * 2;
+      const thread = cylinder(0.012, 0.012, 0.9, dark, 5);
+      thread.position.set(Math.cos(angle) * 0.545, 1.03, Math.sin(angle) * 0.545);
+      netThreads.push(thread);
+    }
+    for (const y of [0.78, 1.02, 1.26]) {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.545, 0.012, 5, 24), createMaterial(dark));
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = y;
+      netThreads.push(ring);
+    }
+    meshBasket.add(meshWall, meshTop, meshBottom, ...netThreads);
+
+    const dryPlateA = cylinder(0.29, 0.31, 0.045, palette.cream, 14);
+    dryPlateA.rotation.z = Math.PI / 2;
+    dryPlateA.position.set(-0.2, 1.0, 0.18);
+    const dryPlateB = dryPlateA.clone();
+    dryPlateB.position.set(0.04, 0.92, 0.13);
+    dryPlateB.rotation.y = 0.35;
+    const dryCup = cylinder(0.17, 0.15, 0.3, 0xbfc8c0, 12);
+    dryCup.rotation.z = -0.28;
+    dryCup.position.set(0.25, 0.84, 0.24);
+    const hangerLeft = rodBetween(new THREE.Vector3(-0.42, 1.47, 0), new THREE.Vector3(-0.18, 1.86, 0), 0.025, dark, 6);
+    const hangerRight = rodBetween(new THREE.Vector3(0.42, 1.47, 0), new THREE.Vector3(0.18, 1.86, 0), 0.025, dark, 6);
+    const handle = roundedMesh(0.4, 0.06, 0.07, dark, 0.02);
+    handle.position.y = 1.86;
+    const dripA = cylinder(0.018, 0.018, 0.2, 0x8fd7df, 6);
+    dripA.position.set(-0.15, 0.47, 0);
+    const dripB = dripA.clone();
+    dripB.position.x = 0.18;
+
+    rack.add(bucketWall, bucketBase, bucketRim, meshBasket, dryPlateA, dryPlateB, dryCup, hangerLeft, hangerRight, handle, dripA, dripB);
+    rack.position.set(anchor.x + 1.05, 0.12, anchor.z + 0.62);
+    this.handsOn.dishBox = rack;
+    this.world.add(setShadow(rack));
+    this.spawnSparkles(rack.position.clone().add(new THREE.Vector3(0, 1.05, 0)), palette.mint, 14);
   }
 
   toggleLantern() {
@@ -1328,6 +1428,8 @@ export class CampWorld {
     const firepit = this.handsOn.items.campfire;
     if (!firepit) return;
     this.isSeated = true;
+    this.seatedOnChair = false;
+    this.seatedHeight = 0.16;
     this.player.visible = true;
     this.player.position.copy(firepit.position).add(new THREE.Vector3(0.15, 0.48, 1.7));
     this.playerTarget.copy(this.player.position);
@@ -1337,6 +1439,7 @@ export class CampWorld {
 
   sleepInTent() {
     this.isSeated = false;
+    this.seatedOnChair = false;
     this.player.visible = false;
     this.focusOn(this.handsOn.tent.position, 0.62);
     this.spawnSparkles(this.handsOn.tent.position.clone().add(new THREE.Vector3(0, 2.1, 0)), 0xb8c8ff, 24);
@@ -1346,10 +1449,12 @@ export class CampWorld {
     const chair = this.handsOn.items.chair;
     if (!chair) return;
     this.isSeated = true;
+    this.seatedOnChair = true;
+    this.seatedHeight = 0.16;
     this.activity = null;
-    this.player.position.copy(chair.position).add(new THREE.Vector3(0, 0.48, 0.12));
+    this.player.position.copy(chair.position).add(new THREE.Vector3(0, this.seatedHeight, -0.08));
     this.playerTarget.copy(this.player.position);
-    this.player.rotation.y = chair.rotation.y + Math.PI;
+    this.player.rotation.y = chair.rotation.y;
     this.focusOn(chair.position, 0.48);
   }
 
@@ -1397,10 +1502,24 @@ export class CampWorld {
     hat.position.y = 1.92;
     const hatTop = roundedMesh(0.45, 0.2, 0.42, isPlayer ? palette.orange : palette.cream, 0.09);
     hatTop.position.y = 2.03;
-    const legA = roundedMesh(0.16, 0.52, 0.17, 0x466267, 0.05);
-    legA.position.set(-0.13, 0.38, 0);
-    const legB = legA.clone();
-    legB.position.x = 0.13;
+    const createLeg = (x) => {
+      const leg = new THREE.Group();
+      leg.position.set(x, 0.57, 0);
+      const thigh = roundedMesh(0.16, 0.36, 0.17, 0x466267, 0.05);
+      thigh.position.y = -0.18;
+      const knee = new THREE.Group();
+      knee.position.y = -0.36;
+      const shin = roundedMesh(0.15, 0.34, 0.16, 0x466267, 0.05);
+      shin.position.y = -0.17;
+      const shoe = roundedMesh(0.19, 0.12, 0.3, 0x3b4947, 0.045);
+      shoe.position.set(0, -0.38, 0.08);
+      knee.add(shin, shoe);
+      leg.add(thigh, knee);
+      leg.userData.knee = knee;
+      return leg;
+    };
+    const legA = createLeg(-0.13);
+    const legB = createLeg(0.13);
     const armA = roundedMesh(0.13, 0.58, 0.15, 0xf0c5a0, 0.05);
     armA.position.set(-0.34, 1.0, 0);
     armA.rotation.z = -0.1;
@@ -1729,6 +1848,7 @@ export class CampWorld {
     if (!target) return;
     this.activity = type;
     this.isSeated = false;
+    this.seatedOnChair = false;
     this.playerTarget.copy(target);
     this.focusOn(target, 0.32);
   }
@@ -1884,17 +2004,25 @@ export class CampWorld {
   _updatePlayer(delta) {
     if (this.isSeated) {
       const parts = this.player.userData.parts;
-      this.player.position.y = 0.48;
-      parts.legA.rotation.x = -1.25;
-      parts.legB.rotation.x = -1.25;
-      parts.armA.rotation.x = -0.35;
-      parts.armB.rotation.x = -0.35;
+      this.player.position.y = this.seatedHeight;
+      parts.body.rotation.x = -0.08;
+      parts.head.rotation.x = 0.06;
+      parts.legA.rotation.x = -1.18;
+      parts.legB.rotation.x = -1.18;
+      parts.legA.userData.knee.rotation.x = 1.18;
+      parts.legB.userData.knee.rotation.x = 1.18;
+      parts.armA.rotation.x = -0.78;
+      parts.armB.rotation.x = -0.78;
       return;
     }
     const direction = this.playerTarget.clone().sub(this.player.position);
     direction.y = 0;
     const distance = direction.length();
     const parts = this.player.userData.parts;
+    parts.body.rotation.x *= 0.82;
+    parts.head.rotation.x *= 0.82;
+    parts.legA.userData.knee.rotation.x *= 0.78;
+    parts.legB.userData.knee.rotation.x *= 0.78;
     if (distance > 0.08) {
       direction.normalize();
       const step = Math.min(distance, delta * 2.25);
