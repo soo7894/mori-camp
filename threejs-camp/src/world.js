@@ -576,6 +576,15 @@ export class CampWorld {
     return group;
   }
 
+  _disableCampInteractions(group) {
+    if (!group) return;
+    const meshes = new Set();
+    group.traverse((object) => {
+      if (object.isMesh) meshes.add(object);
+    });
+    this.campInteractables = this.campInteractables.filter((object) => !meshes.has(object));
+  }
+
   _createHandsOnSite(saved = {}) {
     this.handsOn = {
       origin: new THREE.Vector3(16.0, 0.12, 0.0),
@@ -584,6 +593,8 @@ export class CampWorld {
       tent: null,
       mug: null,
       meal: null,
+      grill: null,
+      soupPot: null,
       dishBasin: null,
       dishBox: null,
     };
@@ -647,6 +658,8 @@ export class CampWorld {
     if (saved.burnerPlaced) this._placeCampItem('burner', saved.burnerPosition ?? [16.8, 0.1], false, saved.burnerOn);
     if (saved.lanternPlaced) this._placeCampItem('lantern', saved.lanternPosition ?? [14.0, 1.8], false, saved.lanternOn);
     if (saved.campfirePlaced) this._placeCampItem('campfire', saved.campfirePosition ?? [18.2, 1.7], false, saved.fireOn);
+    if (saved.meatStarted && !saved.soupStarted) this.startGrillingMeat(saved.meatTurns ?? 0);
+    if (saved.soupStarted && !saved.mealPrepared) this.startFishcakeSoup(saved.soupStirs ?? 0);
     if (saved.mealPrepared && !saved.mealEaten) this.prepareMeal();
     if (saved.coffeeBrewed && !saved.coffeeDrunk) this.brewCoffee();
     if (saved.dishwashingStarted && !saved.dishesStored) this.startDishwashing(saved.dishesScrubbed ?? 0);
@@ -743,19 +756,43 @@ export class CampWorld {
 
   _createCampBurner(on = false) {
     const group = new THREE.Group();
-    const body = roundedMesh(0.85, 0.27, 0.72, 0x596d65, 0.08);
+    const body = roundedMesh(1.35, 0.28, 0.82, 0x70806a, 0.08);
     body.position.y = 0.18;
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.045, 7, 14), createMaterial(0x303c3a));
+    const top = roundedMesh(1.25, 0.06, 0.73, 0xd9d5c6, 0.04);
+    top.position.y = 0.35;
+    const canisterCover = roundedMesh(0.42, 0.1, 0.66, 0x59695d, 0.04);
+    canisterCover.position.set(0.42, 0.41, 0);
+    const coverLine = roundedMesh(0.025, 0.12, 0.68, 0x34423d, 0.01);
+    coverLine.position.set(0.18, 0.42, 0);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.27, 0.045, 7, 18), createMaterial(0x303c3a));
     ring.rotation.x = Math.PI / 2;
-    ring.position.y = 0.38;
-    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.42, 8), createMaterial(0x69b8ff));
-    flame.position.y = 0.58;
+    ring.position.set(-0.27, 0.43, 0);
+
+    const trivetBars = [];
+    for (let index = 0; index < 4; index += 1) {
+      const bar = roundedMesh(0.62, 0.055, 0.075, 0x303c3a, 0.02);
+      bar.position.set(-0.27, 0.47, 0);
+      bar.rotation.y = index * Math.PI / 4;
+      trivetBars.push(bar);
+    }
+
+    const flame = new THREE.Group();
+    for (let index = 0; index < 8; index += 1) {
+      const tongue = new THREE.Mesh(new THREE.ConeGeometry(0.055, 0.2, 6), createMaterial(0x69b8ff));
+      const angle = (index / 8) * Math.PI * 2;
+      tongue.position.set(-0.27 + Math.cos(angle) * 0.19, 0.57, Math.sin(angle) * 0.19);
+      flame.add(tongue);
+    }
     flame.visible = on;
-    const kettle = roundedMesh(0.52, 0.52, 0.52, 0xe9ded0, 0.18);
-    kettle.position.y = 0.82;
+
+    const knob = cylinder(0.1, 0.1, 0.12, 0x303c3a, 10);
+    knob.rotation.x = Math.PI / 2;
+    knob.position.set(0.38, 0.2, 0.45);
+    const ignitionMark = roundedMesh(0.16, 0.035, 0.035, palette.orange, 0.01);
+    ignitionMark.position.set(0.38, 0.2, 0.52);
     const light = new THREE.PointLight(0x6cbcff, on ? 1.8 : 0, 4, 2);
-    light.position.y = 0.7;
-    group.add(body, ring, flame, kettle, light);
+    light.position.set(-0.27, 0.65, 0);
+    group.add(body, top, canisterCover, coverLine, ring, ...trivetBars, flame, knob, ignitionMark, light);
     group.userData.burner = { flame, light, on };
     return setShadow(group);
   }
@@ -900,25 +937,168 @@ export class CampWorld {
     return burner.on;
   }
 
+  startGrillingMeat(turns = 0) {
+    if (this.handsOn.grill) return;
+    const burner = this.handsOn.items.burner;
+    if (!burner) return;
+
+    const grill = new THREE.Group();
+    const pan = roundedMesh(0.96, 0.1, 0.72, 0x2e3734, 0.07);
+    pan.position.y = 0.08;
+    const cookingSurface = roundedMesh(0.84, 0.035, 0.61, 0x1f2926, 0.05);
+    cookingSurface.position.y = 0.15;
+    const handle = roundedMesh(0.62, 0.09, 0.16, 0x5a4030, 0.05);
+    handle.position.set(0.72, 0.08, 0);
+    const ridges = [];
+    for (let index = -3; index <= 3; index += 1) {
+      const ridge = roundedMesh(0.035, 0.035, 0.54, 0x59615c, 0.01);
+      ridge.position.set(index * 0.11, 0.18, 0);
+      ridges.push(ridge);
+    }
+
+    const meatPieces = [];
+    const meatPositions = [[-0.22, -0.16], [0.2, -0.14], [-0.18, 0.17], [0.23, 0.18]];
+    meatPositions.forEach(([x, z], index) => {
+      const meat = roundedMesh(0.32, 0.075, 0.18, turns >= 3 ? 0x8f442d : 0xd87862, 0.055);
+      meat.position.set(x, 0.23, z);
+      meat.rotation.y = (index % 2 ? -1 : 1) * 0.22;
+      meatPieces.push(meat);
+    });
+
+    const hitArea = new THREE.Mesh(
+      new THREE.SphereGeometry(0.72, 8, 6),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    );
+    hitArea.position.y = 0.2;
+    grill.add(pan, cookingSurface, handle, ...ridges, ...meatPieces, hitArea);
+    grill.position.copy(burner.position).add(new THREE.Vector3(-0.27, 0.65, 0));
+    grill.userData.turns = Math.min(3, turns);
+    grill.userData.meatPieces = meatPieces;
+    this._tagCampObject(grill, 'meat');
+    this.handsOn.grill = grill;
+    this.world.add(grill);
+    this._createSmoke(grill, new THREE.Vector3(0, 0.35, 0));
+    this.spawnSparkles(grill.position.clone().add(new THREE.Vector3(0, 0.25, 0)), palette.orange, 12);
+  }
+
+  turnGrillingMeat() {
+    const burner = this.handsOn.items.burner?.userData.burner;
+    const grill = this.handsOn.grill;
+    if (!burner?.on || !grill) return -1;
+    grill.userData.turns = Math.min(3, (grill.userData.turns ?? 0) + 1);
+    const count = grill.userData.turns;
+    grill.userData.meatPieces.forEach((meat, index) => {
+      meat.rotation.y += Math.PI * (index % 2 ? -1 : 1);
+      meat.position.y = 0.25 + Math.sin(index + count) * 0.015;
+      meat.material.color.setHex(count >= 3 ? 0x8f442d : count === 2 ? 0xb85b42 : 0xce6c55);
+    });
+    this.spawnSparkles(grill.position.clone().add(new THREE.Vector3(0, 0.35, 0)), 0xffb04f, 10);
+    return count;
+  }
+
+  startFishcakeSoup(stirs = 0) {
+    if (this.handsOn.soupPot) return;
+    const burner = this.handsOn.items.burner;
+    if (!burner) return;
+    if (this.handsOn.grill) {
+      this._disableCampInteractions(this.handsOn.grill);
+      this.handsOn.grill.visible = false;
+    }
+
+    const pot = new THREE.Group();
+    const body = cylinder(0.5, 0.43, 0.42, 0xc7c9bd, 16);
+    body.position.y = 0.22;
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.035, 6, 18), createMaterial(0x4d5955));
+    rim.rotation.x = Math.PI / 2;
+    rim.position.y = 0.44;
+    const broth = new THREE.Mesh(new THREE.CircleGeometry(0.44, 18), createMaterial(0xd98a45));
+    broth.rotation.x = -Math.PI / 2;
+    broth.position.y = 0.45;
+    const handles = [];
+    for (const x of [-0.57, 0.57]) {
+      const potHandle = roundedMesh(0.22, 0.07, 0.13, 0x4d5955, 0.035);
+      potHandle.position.set(x, 0.31, 0);
+      handles.push(potHandle);
+    }
+
+    const skewers = new THREE.Group();
+    for (let index = 0; index < 4; index += 1) {
+      const angle = -0.72 + index * 0.48;
+      const stick = cylinder(0.018, 0.018, 0.82, 0xa97843, 6);
+      stick.rotation.z = 0.42 + index * 0.035;
+      stick.position.set(Math.sin(angle) * 0.22, 0.68, Math.cos(angle) * 0.18);
+      const fishcake = roundedMesh(0.2, 0.28, 0.065, 0xf0c17d, 0.035);
+      fishcake.position.set(stick.position.x - 0.09, 0.62, stick.position.z);
+      fishcake.rotation.z = stick.rotation.z;
+      skewers.add(stick, fishcake);
+    }
+    const greenOnion = cylinder(0.04, 0.04, 0.08, 0x72a85a, 8);
+    greenOnion.rotation.z = Math.PI / 2;
+    greenOnion.position.set(-0.18, 0.5, 0.12);
+    const hitArea = new THREE.Mesh(
+      new THREE.SphereGeometry(1.35, 8, 6),
+      new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    );
+    hitArea.position.y = 0.42;
+    pot.add(body, rim, broth, ...handles, skewers, greenOnion, hitArea);
+    pot.position.copy(burner.position).add(new THREE.Vector3(-0.27, 0.61, 0));
+    pot.userData.stirs = Math.min(3, stirs);
+    pot.userData.skewers = skewers;
+    pot.userData.broth = broth;
+    this._tagCampObject(pot, 'soup');
+    this.handsOn.soupPot = pot;
+    this.world.add(pot);
+    this._createSmoke(pot, new THREE.Vector3(0, 0.55, 0));
+    this.spawnSparkles(pot.position.clone().add(new THREE.Vector3(0, 0.35, 0)), palette.yellow, 12);
+  }
+
+  stirFishcakeSoup() {
+    const burner = this.handsOn.items.burner?.userData.burner;
+    const pot = this.handsOn.soupPot;
+    if (!burner?.on || !pot) return -1;
+    pot.userData.stirs = Math.min(3, (pot.userData.stirs ?? 0) + 1);
+    pot.userData.skewers.rotation.y += 0.72;
+    pot.userData.broth.rotation.z += 0.45;
+    this.spawnSparkles(pot.position.clone().add(new THREE.Vector3(0, 0.55, 0)), 0xffdf86, 11);
+    return pot.userData.stirs;
+  }
+
   prepareMeal() {
     if (this.handsOn.meal) return;
+    if (this.handsOn.grill) {
+      this._disableCampInteractions(this.handsOn.grill);
+      this.handsOn.grill.visible = false;
+    }
+    if (this.handsOn.soupPot) {
+      this._disableCampInteractions(this.handsOn.soupPot);
+      this.handsOn.soupPot.visible = false;
+    }
     const anchor = this.handsOn.items.table?.position ?? this.handsOn.origin;
     const meal = new THREE.Group();
-    const plate = cylinder(0.44, 0.5, 0.09, palette.cream, 18);
+    const plate = cylinder(0.5, 0.55, 0.09, palette.cream, 18);
     plate.position.y = 0.05;
-    const rice = new THREE.Mesh(new THREE.SphereGeometry(0.23, 10, 8), createMaterial(0xf5ead5));
-    rice.scale.y = 0.65;
-    rice.position.set(-0.13, 0.18, 0);
-    const stew = cylinder(0.22, 0.25, 0.15, palette.coral, 12);
-    stew.position.set(0.2, 0.13, 0.06);
-    const greens = roundedMesh(0.22, 0.08, 0.18, 0x63a764, 0.04);
-    greens.position.set(0.05, 0.14, -0.22);
+    const cookedMeat = [];
+    for (let index = 0; index < 4; index += 1) {
+      const piece = roundedMesh(0.3, 0.075, 0.15, 0x8f442d, 0.045);
+      piece.position.set(-0.2 + (index % 2) * 0.32, 0.16 + Math.floor(index / 2) * 0.035, -0.12 + Math.floor(index / 2) * 0.19);
+      piece.rotation.y = index % 2 ? -0.25 : 0.25;
+      cookedMeat.push(piece);
+    }
+    const soupBowl = cylinder(0.27, 0.34, 0.2, 0x40514b, 14);
+    soupBowl.position.set(0.2, 0.14, 0.18);
+    const broth = cylinder(0.255, 0.255, 0.025, 0xd98a45, 16);
+    broth.position.set(0.2, 0.25, 0.18);
+    const fishcake = roundedMesh(0.13, 0.06, 0.12, 0xf0c17d, 0.025);
+    fishcake.position.set(0.16, 0.29, 0.17);
+    const greens = cylinder(0.035, 0.035, 0.07, 0x72a85a, 7);
+    greens.rotation.z = Math.PI / 2;
+    greens.position.set(0.29, 0.29, 0.16);
     const hitArea = new THREE.Mesh(
       new THREE.SphereGeometry(0.62, 8, 6),
       new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
     );
     hitArea.position.y = 0.2;
-    meal.add(plate, rice, stew, greens, hitArea);
+    meal.add(plate, ...cookedMeat, soupBowl, broth, fishcake, greens, hitArea);
     meal.position.set(anchor.x - 0.35, this.handsOn.items.table ? 1.32 : 0.18, anchor.z);
     this._tagCampObject(meal, 'meal');
     this.handsOn.meal = meal;
@@ -929,6 +1109,7 @@ export class CampWorld {
 
   eatMeal() {
     if (!this.handsOn.meal) return;
+    this._disableCampInteractions(this.handsOn.meal);
     this.handsOn.meal.visible = false;
     this.spawnSparkles(this.player.position.clone().add(new THREE.Vector3(0, 1.7, 0)), palette.coral, 18);
   }
@@ -1345,6 +1526,16 @@ export class CampWorld {
       if (action === 'burner') {
         const on = this.toggleBurner();
         this.onCampInteract?.({ type: 'burner-toggle', on });
+        return;
+      }
+      if (action === 'meat') {
+        const count = this.turnGrillingMeat();
+        this.onCampInteract?.(count < 0 ? { type: 'cooking-needs-fire' } : { type: 'meat-turned', count });
+        return;
+      }
+      if (action === 'soup') {
+        const count = this.stirFishcakeSoup();
+        this.onCampInteract?.(count < 0 ? { type: 'cooking-needs-fire' } : { type: 'soup-stirred', count });
         return;
       }
       if (action === 'meal') {

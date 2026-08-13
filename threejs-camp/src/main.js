@@ -5,10 +5,10 @@ const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 
 const STORAGE_KEY = 'mori-camp-save-v2';
-const CAMP_STEP_TOTAL = 22;
+const CAMP_STEP_TOTAL = 25;
 
 const initialState = {
-  version: 4,
+  version: 5,
   day: 1,
   minutes: 8 * 60,
   money: 2400,
@@ -28,6 +28,12 @@ const initialState = {
     burnerPlaced: false,
     burnerOn: false,
     burnerUsed: false,
+    meatStarted: false,
+    meatTurns: 0,
+    meatCooked: false,
+    soupStarted: false,
+    soupStirs: 0,
+    soupCooked: false,
     mealPrepared: false,
     mealEaten: false,
     coffeeBrewed: false,
@@ -78,14 +84,25 @@ const bookings = [
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if ([2, 3, 4].includes(saved?.version) && Array.isArray(saved.facilities)) {
+    if ([2, 3, 4, 5].includes(saved?.version) && Array.isArray(saved.facilities)) {
+      const campSetup = saved.version >= 4
+        ? { ...structuredClone(initialState.campSetup), ...saved.campSetup }
+        : structuredClone(initialState.campSetup);
+      if (saved.version < 5 && saved.campSetup?.mealPrepared) {
+        Object.assign(campSetup, {
+          meatStarted: true,
+          meatTurns: 3,
+          meatCooked: true,
+          soupStarted: true,
+          soupStirs: 3,
+          soupCooked: true,
+        });
+      }
       return {
         ...structuredClone(initialState),
         ...saved,
-        version: 4,
-        campSetup: saved.version === 4
-          ? { ...structuredClone(initialState.campSetup), ...saved.campSetup }
-          : structuredClone(initialState.campSetup),
+        version: 5,
+        campSetup,
         selectedFacilityId: null,
       };
     }
@@ -366,7 +383,10 @@ function campProgressCount() {
     camp.seated,
     camp.burnerPlaced,
     camp.burnerUsed,
-    camp.mealPrepared,
+    camp.meatStarted,
+    camp.meatCooked,
+    camp.soupStarted,
+    camp.soupCooked,
     camp.mealEaten,
     camp.coffeeBrewed,
     camp.coffeeDrunk,
@@ -390,11 +410,15 @@ function nextCampInstruction() {
   if (camp.stakes < 4) return ['말뚝 못질하기', `망치를 들고 텐트 주변 말뚝을 하나씩 눌러 박으세요. (${camp.stakes}/4)`];
   if (!camp.tablePlaced) return ['테이블 직접 배치', '테이블을 꺼낸 뒤 원하는 땅을 클릭해서 놓으세요.'];
   if (!camp.chairPlaced) return ['의자 직접 배치', '의자를 꺼낸 뒤 테이블 근처의 원하는 곳을 클릭하세요.'];
-  if (!camp.seated) return ['잠깐 앉아볼까요?', '방금 놓은 빨간 의자를 직접 클릭하면 캐릭터가 앉습니다.'];
-  if (!camp.burnerPlaced) return ['버너 꺼내기', '버너를 꺼내고 테이블 옆 땅을 클릭해 배치하세요.'];
-  if (!camp.burnerUsed) return ['버너 점화', '배치한 버너를 직접 클릭해 파란 불을 켜세요. 다시 누르면 꺼집니다.'];
-  if (!camp.burnerOn && !camp.mealPrepared) return ['버너 다시 켜기', '식사를 만들려면 버너를 직접 눌러 불을 다시 켜주세요.'];
-  if (!camp.mealPrepared) return ['저녁 식사 준비', '불이 켜진 버너로 따뜻한 식사를 만들어보세요.'];
+  if (!camp.seated) return ['잠깐 앉아볼까요?', '방금 놓은 카키색 로우 체어를 직접 클릭하면 캐릭터가 앉습니다.'];
+  if (!camp.burnerPlaced) return ['휴대용 버너 꺼내기', '부탄가스 캠핑 버너를 꺼내고 테이블 옆 땅을 클릭해 배치하세요.'];
+  if (!camp.burnerUsed) return ['버너 점화', '배치한 캠핑 버너를 직접 클릭해 파란 불꽃을 켜세요. 다시 누르면 꺼집니다.'];
+  if (!camp.burnerOn && !camp.mealPrepared) return ['버너 다시 켜기', '요리를 계속하려면 휴대용 버너를 직접 눌러 불을 다시 켜주세요.'];
+  if (!camp.meatStarted) return ['고기 굽기 시작', '불이 켜진 버너에 그릴 팬을 올리고 고기를 구워보세요.'];
+  if (!camp.meatCooked) return ['고기 직접 뒤집기', `버너 위 고기를 눌러 앞뒤로 노릇하게 구우세요. (${camp.meatTurns}/3)`];
+  if (!camp.soupStarted) return ['오뎅탕 끓이기', '구운 고기를 잠시 내려놓고 버너에 냄비를 올려 오뎅탕을 끓이세요.'];
+  if (!camp.soupCooked) return ['오뎅탕 직접 젓기', `냄비를 눌러 국자로 오뎅탕을 골고루 저으세요. (${camp.soupStirs}/3)`];
+  if (!camp.mealPrepared) return ['캠핑 식사 상차림', '구운 고기와 뜨끈한 오뎅탕을 테이블에 차리고 있어요.'];
   if (!camp.mealEaten) return ['맛있게 식사하기', '테이블 위에 완성된 접시를 직접 클릭해 식사하세요.'];
   if (!camp.burnerOn && !camp.coffeeBrewed) return ['커피 물 끓이기', '버너를 다시 켜 커피를 내릴 물을 끓여주세요.'];
   if (!camp.coffeeBrewed) return ['따뜻한 커피 내리기', '식사를 마쳤어요. 버너로 커피를 천천히 내려주세요.'];
@@ -430,7 +454,8 @@ function updateHandsOnUI() {
     table: camp.stakes >= 4 && !camp.tablePlaced,
     chair: camp.tablePlaced && !camp.chairPlaced,
     burner: camp.chairPlaced && !camp.burnerPlaced,
-    meal: camp.burnerOn && !camp.mealPrepared,
+    meat: camp.burnerOn && !camp.meatStarted,
+    soup: camp.meatCooked && camp.burnerOn && !camp.soupStarted,
     coffee: camp.mealEaten && camp.burnerOn && !camp.coffeeBrewed,
     wash: camp.coffeeDrunk && !camp.burnerOn && !camp.dishwashingStarted,
     store: camp.dishesScrubbed >= 3 && !camp.dishesStored,
@@ -474,11 +499,15 @@ function chooseCampAction(action) {
     world.startPlacement(action);
     const names = { table: '테이블', chair: '의자', burner: '버너', lantern: '랜턴', campfire: '화로와 장작' };
     showToast(`${names[action]}을 움직여 원하는 땅을 클릭하세요.`, '＋');
-  } else if (action === 'meal') {
-    state.campSetup.mealPrepared = true;
-    world.prepareMeal();
+  } else if (action === 'meat') {
+    state.campSetup.meatStarted = true;
+    world.startGrillingMeat();
     state.energy = clamp(state.energy - 5);
-    showToast('보글보글, 따뜻한 캠핑 요리가 완성됐어요!', '▣');
+    showToast('치익— 그릴 팬에 고기를 올렸어요. 고기를 3번 눌러 뒤집어주세요.', '♨');
+  } else if (action === 'soup') {
+    state.campSetup.soupStarted = true;
+    world.startFishcakeSoup();
+    showToast('냄비에 육수와 오뎅 꼬치를 넣었어요. 냄비를 3번 눌러 저어주세요.', '♨');
   } else if (action === 'coffee') {
     state.campSetup.coffeeBrewed = true;
     currentCampTool = null;
@@ -548,6 +577,29 @@ function handleCampInteract(event) {
     camp.burnerOn = event.on;
     if (event.on) camp.burnerUsed = true;
     showToast(event.on ? '딸깍! 버너에 파란 불이 붙었어요.' : '버너 불을 안전하게 껐어요.', event.on ? '◆' : '○');
+  }
+  if (event.type === 'cooking-needs-fire') {
+    showToast('요리하려면 먼저 휴대용 버너의 불을 켜주세요.', '!');
+  }
+  if (event.type === 'meat-turned') {
+    camp.meatTurns = Math.max(camp.meatTurns, event.count);
+    if (event.count >= 3) {
+      camp.meatCooked = true;
+      showToast('고기가 앞뒤로 노릇하게 익었어요! 이제 오뎅탕을 끓여볼까요?', '♨');
+    } else {
+      showToast(`치익! 고기를 뒤집었어요. (${event.count}/3)`, '♨');
+    }
+  }
+  if (event.type === 'soup-stirred') {
+    camp.soupStirs = Math.max(camp.soupStirs, event.count);
+    if (event.count >= 3) {
+      camp.soupCooked = true;
+      camp.mealPrepared = true;
+      world.prepareMeal();
+      showToast('구운 고기와 뜨끈한 오뎅탕 한 상이 완성됐어요!', '▣');
+    } else {
+      showToast(`보글보글— 오뎅탕을 저었어요. (${event.count}/3)`, '♨');
+    }
   }
   if (event.type === 'meal-eaten') {
     camp.mealEaten = true;
