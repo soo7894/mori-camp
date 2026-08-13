@@ -66,6 +66,17 @@ function cylinder(radiusTop, radiusBottom, height, color, segments = 8) {
   return mesh;
 }
 
+function rodBetween(start, end, radius, color, segments = 8) {
+  const direction = new THREE.Vector3().subVectors(end, start);
+  const rod = cylinder(radius, radius, direction.length(), color, segments);
+  rod.position.copy(start).add(end).multiplyScalar(0.5);
+  rod.quaternion.setFromUnitVectors(
+    new THREE.Vector3(0, 1, 0),
+    direction.clone().normalize(),
+  );
+  return rod;
+}
+
 function seededRandom(seed = 123456) {
   let value = seed >>> 0;
   return () => {
@@ -644,30 +655,89 @@ export class CampWorld {
 
   _createCampTable() {
     const group = new THREE.Group();
-    const top = roundedMesh(2.1, 0.16, 1.2, 0xb87945, 0.08);
-    top.position.y = 1.12;
-    group.add(top);
-    for (const x of [-0.82, 0.82]) for (const z of [-0.38, 0.38]) {
-      const leg = cylinder(0.07, 0.08, 1.05, 0x55645d, 6);
-      leg.position.set(x, 0.54, z);
-      group.add(leg);
+    const frameColor = 0x3d4a46;
+    const slatColors = [0xc58a52, 0xd49b62, 0xb87945];
+
+    // A light roll-top surface, made from individual wooden slats.
+    for (let index = 0; index < 10; index += 1) {
+      const slat = roundedMesh(0.18, 0.085, 1.18, slatColors[index % slatColors.length], 0.035);
+      slat.position.set(-0.9 + index * 0.2, 1.02, 0);
+      group.add(slat);
     }
+
+    for (const z of [-0.5, 0.5]) {
+      const rail = roundedMesh(2.02, 0.075, 0.075, frameColor, 0.025);
+      rail.position.set(0, 0.94, z);
+      group.add(rail);
+
+      // Crossed folding legs make the silhouette unmistakably portable.
+      group.add(
+        rodBetween(new THREE.Vector3(-0.78, 0.1, z), new THREE.Vector3(0.62, 0.94, z), 0.045, frameColor, 8),
+        rodBetween(new THREE.Vector3(0.78, 0.1, z), new THREE.Vector3(-0.62, 0.94, z), 0.045, frameColor, 8),
+      );
+
+      for (const x of [-0.78, 0.78]) {
+        const foot = roundedMesh(0.28, 0.055, 0.12, 0x27332f, 0.025);
+        foot.position.set(x, 0.07, z);
+        group.add(foot);
+      }
+    }
+
+    const brace = rodBetween(
+      new THREE.Vector3(0, 0.48, -0.52),
+      new THREE.Vector3(0, 0.48, 0.52),
+      0.04,
+      frameColor,
+      8,
+    );
+    group.add(brace);
     return setShadow(group);
   }
 
   _createCampChair() {
     const group = new THREE.Group();
-    const seat = roundedMesh(1.05, 0.14, 0.95, palette.coral, 0.09);
-    seat.position.y = 0.72;
-    const back = roundedMesh(1.05, 0.95, 0.14, palette.coral, 0.08);
-    back.position.set(0, 1.2, -0.42);
-    back.rotation.x = -0.18;
-    group.add(seat, back);
-    for (const x of [-0.4, 0.4]) for (const z of [-0.34, 0.34]) {
-      const leg = cylinder(0.055, 0.065, 0.7, 0x4f625d, 6);
-      leg.position.set(x, 0.35, z);
-      group.add(leg);
+    const frameColor = 0x34423d;
+    const fabricColor = 0x71805a;
+    const trimColor = 0xd0ae71;
+
+    // Low, slightly reclined fabric seat used by compact camping chairs.
+    const seat = roundedMesh(1.02, 0.09, 0.9, fabricColor, 0.035);
+    seat.position.set(0, 0.58, 0.02);
+    seat.rotation.x = -0.1;
+    const back = roundedMesh(1.08, 0.92, 0.075, fabricColor, 0.03);
+    back.position.set(0, 1.07, -0.39);
+    back.rotation.x = -0.28;
+    const backBand = roundedMesh(0.95, 0.055, 0.09, trimColor, 0.02);
+    backBand.position.set(0, 1.39, -0.49);
+    backBand.rotation.x = -0.28;
+    const seatBand = roundedMesh(0.92, 0.04, 0.08, trimColor, 0.015);
+    seatBand.position.set(0, 0.63, 0.42);
+    seatBand.rotation.x = -0.1;
+    group.add(seat, back, backBand, seatBand);
+
+    for (const x of [-0.48, 0.48]) {
+      // X-frame tubes fold flat for carrying.
+      group.add(
+        rodBetween(new THREE.Vector3(x, 0.09, -0.5), new THREE.Vector3(x, 0.82, 0.39), 0.042, frameColor, 8),
+        rodBetween(new THREE.Vector3(x, 0.09, 0.48), new THREE.Vector3(x, 1.48, -0.56), 0.042, frameColor, 8),
+      );
+
+      const arm = roundedMesh(0.09, 0.07, 0.72, 0x86633f, 0.025);
+      arm.position.set(x * 1.16, 0.91, -0.03);
+      arm.rotation.x = -0.14;
+      group.add(arm);
+
+      for (const z of [-0.5, 0.48]) {
+        const foot = roundedMesh(0.18, 0.05, 0.16, 0x26312e, 0.025);
+        foot.position.set(x, 0.06, z);
+        group.add(foot);
+      }
     }
+
+    group.add(
+      rodBetween(new THREE.Vector3(-0.5, 0.58, 0.32), new THREE.Vector3(0.5, 0.58, 0.32), 0.035, frameColor, 8),
+      rodBetween(new THREE.Vector3(-0.5, 1.44, -0.53), new THREE.Vector3(0.5, 1.44, -0.53), 0.035, frameColor, 8),
+    );
     return setShadow(group);
   }
 
