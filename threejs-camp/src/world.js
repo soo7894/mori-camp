@@ -145,6 +145,7 @@ export class CampWorld {
     this.facilities = new Map();
     this.selectable = [];
     this.campInteractables = [];
+    this.movableCampMeshes = [];
     this.guests = [];
     this.fireEffects = [];
     this.smokePuffs = [];
@@ -154,6 +155,9 @@ export class CampWorld {
     this.pointerDown = new THREE.Vector2();
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
+    this.draggedCampItem = null;
+    this.dragOffset = new THREE.Vector3();
+    this.dragMoved = false;
     this.focusTarget = new THREE.Vector3(0, 0, 0);
     this.focusAmount = 0;
     this.activity = null;
@@ -223,12 +227,23 @@ export class CampWorld {
 
     this._onPointerDown = (event) => {
       this.pointerDown.set(event.clientX, event.clientY);
+      this._startCampItemDrag(event);
     };
-    this._onPointerUp = (event) => this._handlePick(event);
-    this._onPointerMove = (event) => this._updatePlacementPointer(event);
+    this._onPointerUp = (event) => {
+      if (this._finishCampItemDrag(event)) return;
+      this._handlePick(event);
+    };
+    this._onPointerMove = (event) => {
+      if (this._moveCampItemDrag(event)) return;
+      this._updatePlacementPointer(event);
+    };
+    this._onPointerCancel = (event) => this._finishCampItemDrag(event, true);
+    this._onDoubleClick = (event) => this._handleCampItemDoubleClick(event);
     canvas.addEventListener('pointerdown', this._onPointerDown);
     canvas.addEventListener('pointerup', this._onPointerUp);
     canvas.addEventListener('pointermove', this._onPointerMove);
+    canvas.addEventListener('pointercancel', this._onPointerCancel);
+    canvas.addEventListener('dblclick', this._onDoubleClick);
     window.addEventListener('resize', () => this.resize());
   }
 
@@ -585,6 +600,24 @@ export class CampWorld {
     this.campInteractables = this.campInteractables.filter((object) => !meshes.has(object));
   }
 
+  _tagMovableCampItem(group, item) {
+    group.userData.campItem = item;
+    group.traverse((object) => {
+      if (!object.isMesh) return;
+      object.userData.campItem = item;
+      this.movableCampMeshes.push(object);
+    });
+  }
+
+  _disableCampItemMovement(group) {
+    if (!group) return;
+    const meshes = new Set();
+    group.traverse((object) => {
+      if (object.isMesh) meshes.add(object);
+    });
+    this.movableCampMeshes = this.movableCampMeshes.filter((object) => !meshes.has(object));
+  }
+
   _createHandsOnSite(saved = {}) {
     this.handsOn = {
       origin: new THREE.Vector3(16.0, 0.12, 0.0),
@@ -653,9 +686,9 @@ export class CampWorld {
     this.placementPlane.position.y = 0.08;
     this.world.add(this.placementPlane);
 
-    if (saved.tablePlaced) this._placeCampItem('table', saved.tablePosition ?? [17.2, 0.8], false);
-    if (saved.chairPlaced) this._placeCampItem('chair', saved.chairPosition ?? [17.65, -1.25], false);
-    if (saved.burnerPlaced) this._placeCampItem('burner', saved.burnerPosition ?? [16.8, 0.1], false, saved.burnerOn);
+    if (saved.tablePlaced && !saved.tableStored) this._placeCampItem('table', saved.tablePosition ?? [17.2, 0.8], false);
+    if (saved.chairPlaced && !saved.chairStored) this._placeCampItem('chair', saved.chairPosition ?? [17.65, -1.25], false);
+    if (saved.burnerPlaced && !saved.burnerStored) this._placeCampItem('burner', saved.burnerPosition ?? [16.8, 0.1], false, saved.burnerOn);
     if (saved.lanternPlaced) this._placeCampItem('lantern', saved.lanternPosition ?? [14.0, 1.8], false, saved.lanternOn);
     if (saved.campfirePlaced) this._placeCampItem('campfire', saved.campfirePosition ?? [18.2, 1.7], false, saved.fireOn);
     if (saved.meatStarted && !saved.soupStarted) this.startGrillingMeat(saved.meatTurns ?? 0);
@@ -858,12 +891,108 @@ export class CampWorld {
     if (item === 'burner') this._tagCampObject(object, 'burner');
     if (item === 'lantern') this._tagCampObject(object, 'lantern');
     if (item === 'campfire') this._tagCampObject(object, 'campfire');
+    if (['table', 'chair', 'burner'].includes(item)) this._tagMovableCampItem(object, item);
     if (animate) {
       this.spawnSparkles(object.position.clone().add(new THREE.Vector3(0, 0.8, 0)), palette.yellow, 16);
     }
     this.handsOn.items[item] = object;
     this.world.add(object);
     return object;
+  }
+
+  _movableCampHit(event) {
+    if (!this.movableCampMeshes.length) return null;
+    const rect = this.canvas.getBoundingClientRect();
+    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    return this.raycaster.intersectObjects(this.movableCampMeshes, false)[0] ?? null;
+  }
+
+  _startCampItemDrag(event) {
+    if (this.placement || event.button !== 0) return false;
+    const hit = this._movableCampHit(event);
+    if (!hit) return false;
+    const item = hit.object.userData.campItem;
+    const object = this.handsOn.items[item];
+    if (!object) return false;
+    if (item === 'burner' && object.userData.burner?.on) {
+      this.onCampInteract?.({ type: 'drag-blocked', item, reason: 'burner-on' });
+      return false;
+    }
+    const point = this._placementPoint(event);
+    if (!point) return false;
+    this.draggedCampItem = { item, object };
+    this.dragOffset.copy(object.position).sub(point);
+    this.dragOffset.y = 0;
+    this.dragMoved = false;
+    this.controls.enabled = false;
+    this.canvas.classList.add('dragging-item');
+    this.canvas.setPointerCapture?.(event.pointerId);
+    return true;
+  }
+
+  _moveCampItemDrag(event) {
+    if (!this.draggedCampItem) return false;
+    const point = this._placementPoint(event);
+    if (!point) return true;
+    const { item, object } = this.draggedCampItem;
+    const nextPosition = point.clone().add(this.dragOffset);
+    const delta = new THREE.Vector3(nextPosition.x - object.position.x, 0, nextPosition.z - object.position.z);
+    object.position.x = nextPosition.x;
+    object.position.z = nextPosition.z;
+    this._moveCampItemAttachments(item, delta);
+    const travel = this.pointerDown.distanceTo(new THREE.Vector2(event.clientX, event.clientY));
+    if (travel > 4) this.dragMoved = true;
+    return true;
+  }
+
+  _moveCampItemAttachments(item, delta) {
+    if (delta.lengthSq() === 0) return;
+    const attachments = item === 'table'
+      ? [this.handsOn.meal, this.handsOn.mug, this.handsOn.dishBasin, this.handsOn.dishBox]
+      : item === 'burner'
+        ? [this.handsOn.grill, this.handsOn.soupPot]
+        : [];
+    attachments.filter(Boolean).forEach((attachment) => attachment.position.add(delta));
+  }
+
+  _finishCampItemDrag(event, cancelled = false) {
+    if (!this.draggedCampItem) return false;
+    const { item, object } = this.draggedCampItem;
+    const moved = this.dragMoved;
+    this.draggedCampItem = null;
+    this.dragMoved = false;
+    this.controls.enabled = true;
+    this.canvas.classList.remove('dragging-item');
+    if (this.canvas.hasPointerCapture?.(event.pointerId)) this.canvas.releasePointerCapture(event.pointerId);
+    if (!cancelled && moved) {
+      this.onCampInteract?.({ type: 'item-moved', item, position: [object.position.x, object.position.z] });
+    }
+    return moved || cancelled;
+  }
+
+  _handleCampItemDoubleClick(event) {
+    if (this.placement) return;
+    const hit = this._movableCampHit(event);
+    const item = hit?.object.userData.campItem;
+    if (item) this.onCampInteract?.({ type: 'pack-request', item });
+  }
+
+  packCampItem(item) {
+    const object = this.handsOn.items[item];
+    if (!object || !['table', 'chair', 'burner'].includes(item)) return false;
+    this._disableCampInteractions(object);
+    this._disableCampItemMovement(object);
+    this.world.remove(object);
+    this.handsOn.items[item] = null;
+    if (item === 'chair' && this.isSeated) {
+      this.isSeated = false;
+      this.player.position.copy(this.handsOn.origin).add(new THREE.Vector3(2.4, 0.12, 2.2));
+      this.playerTarget.copy(this.player.position);
+    }
+    this.spawnSparkles(object.position.clone().add(new THREE.Vector3(0, 0.65, 0)), palette.white, 12);
+    return true;
   }
 
   setCampTool(tool) {

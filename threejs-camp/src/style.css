@@ -843,6 +843,7 @@ button:focus-visible {
 .dock-item:disabled { filter: grayscale(.65); opacity: .42; cursor: not-allowed; transform: none; }
 .dock-item.equipped { outline: 3px solid #ef805d; background: #fff3d2; transform: translateY(-5px); }
 #game-canvas.placing { cursor: crosshair; }
+#game-canvas.dragging-item { cursor: grabbing; }
 
 .energy-box {
   display: flex;

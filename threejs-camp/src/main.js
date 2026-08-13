@@ -8,7 +8,7 @@ const STORAGE_KEY = 'mori-camp-save-v2';
 const CAMP_STEP_TOTAL = 25;
 
 const initialState = {
-  version: 5,
+  version: 6,
   day: 1,
   minutes: 8 * 60,
   money: 2400,
@@ -23,9 +23,12 @@ const initialState = {
     polesAssembled: false,
     stakes: 0,
     tablePlaced: false,
+    tableStored: false,
     chairPlaced: false,
+    chairStored: false,
     seated: false,
     burnerPlaced: false,
+    burnerStored: false,
     burnerOn: false,
     burnerUsed: false,
     meatStarted: false,
@@ -84,7 +87,7 @@ const bookings = [
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if ([2, 3, 4, 5].includes(saved?.version) && Array.isArray(saved.facilities)) {
+    if ([2, 3, 4, 5, 6].includes(saved?.version) && Array.isArray(saved.facilities)) {
       const campSetup = saved.version >= 4
         ? { ...structuredClone(initialState.campSetup), ...saved.campSetup }
         : structuredClone(initialState.campSetup);
@@ -101,7 +104,7 @@ function loadState() {
       return {
         ...structuredClone(initialState),
         ...saved,
-        version: 5,
+        version: 6,
         campSetup,
         selectedFacilityId: null,
       };
@@ -408,10 +411,10 @@ function nextCampInstruction() {
   if (!camp.tentUnpacked) return ['텐트 펼치기', '가방에서 텐트를 꺼내 사이트 위에 직접 펼쳐보세요.'];
   if (!camp.polesAssembled) return ['텐트 폴대 조립', '폴대를 연결해 납작한 텐트의 뼈대를 세워주세요.'];
   if (camp.stakes < 4) return ['말뚝 못질하기', `망치를 들고 텐트 주변 말뚝을 하나씩 눌러 박으세요. (${camp.stakes}/4)`];
-  if (!camp.tablePlaced) return ['테이블 직접 배치', '테이블을 꺼낸 뒤 원하는 땅을 클릭해서 놓으세요.'];
-  if (!camp.chairPlaced) return ['의자 직접 배치', '의자를 꺼낸 뒤 테이블 근처의 원하는 곳을 클릭하세요.'];
+  if (!camp.tablePlaced || (camp.tableStored && !camp.coffeeDrunk)) return ['테이블 직접 배치', '테이블을 꺼낸 뒤 원하는 땅을 클릭해서 놓으세요. 놓은 뒤에는 드래그로 옮길 수 있어요.'];
+  if (!camp.chairPlaced || (camp.chairStored && !camp.seated)) return ['의자 직접 배치', '의자를 꺼낸 뒤 테이블 근처의 원하는 곳을 클릭하세요. 놓은 뒤에는 드래그로 옮길 수 있어요.'];
   if (!camp.seated) return ['잠깐 앉아볼까요?', '방금 놓은 카키색 로우 체어를 직접 클릭하면 캐릭터가 앉습니다.'];
-  if (!camp.burnerPlaced) return ['휴대용 버너 꺼내기', '부탄가스 캠핑 버너를 꺼내고 테이블 옆 땅을 클릭해 배치하세요.'];
+  if (!camp.burnerPlaced || (camp.burnerStored && !camp.coffeeBrewed)) return ['휴대용 버너 꺼내기', '부탄가스 캠핑 버너를 꺼내고 테이블 옆 땅을 클릭해 배치하세요.'];
   if (!camp.burnerUsed) return ['버너 점화', '배치한 캠핑 버너를 직접 클릭해 파란 불꽃을 켜세요. 다시 누르면 꺼집니다.'];
   if (!camp.burnerOn && !camp.mealPrepared) return ['버너 다시 켜기', '요리를 계속하려면 휴대용 버너를 직접 눌러 불을 다시 켜주세요.'];
   if (!camp.meatStarted) return ['고기 굽기 시작', '불이 켜진 버너에 그릴 팬을 올리고 고기를 구워보세요.'];
@@ -451,9 +454,9 @@ function updateHandsOnUI() {
     tent: camp.siteSelected && !camp.tentUnpacked,
     poles: camp.tentUnpacked && !camp.polesAssembled,
     hammer: camp.polesAssembled && camp.stakes < 4,
-    table: camp.stakes >= 4 && !camp.tablePlaced,
-    chair: camp.tablePlaced && !camp.chairPlaced,
-    burner: camp.chairPlaced && !camp.burnerPlaced,
+    table: camp.stakes >= 4 && (!camp.tablePlaced || camp.tableStored),
+    chair: camp.tablePlaced && !camp.tableStored && (!camp.chairPlaced || camp.chairStored),
+    burner: camp.tablePlaced && !camp.tableStored && camp.chairPlaced && (!camp.burnerPlaced || camp.burnerStored),
     meat: camp.burnerOn && !camp.meatStarted,
     soup: camp.meatCooked && camp.burnerOn && !camp.soupStarted,
     coffee: camp.mealEaten && camp.burnerOn && !camp.coffeeBrewed,
@@ -565,9 +568,42 @@ function handleCampInteract(event) {
   if (event.type === 'placed') {
     camp[`${event.item}Placed`] = true;
     camp[`${event.item}Position`] = event.position;
+    if (['table', 'chair', 'burner'].includes(event.item)) camp[`${event.item}Stored`] = false;
     currentCampTool = null;
     const names = { table: '테이블', chair: '의자', burner: '버너', lantern: '랜턴', campfire: '화로와 장작' };
     showToast(`${names[event.item]}을 원하는 자리에 놓았어요.`, '✓');
+  }
+  if (event.type === 'item-moved') {
+    camp[`${event.item}Position`] = event.position;
+    const names = { table: '테이블', chair: '의자', burner: '버너' };
+    showToast(`${names[event.item]}을 새 자리로 옮겼어요.`, '↔');
+  }
+  if (event.type === 'drag-blocked') {
+    showToast('불이 켜진 버너는 움직일 수 없어요. 먼저 불을 꺼주세요.', '!');
+  }
+  if (event.type === 'pack-request') {
+    const names = { table: '테이블', chair: '의자', burner: '버너' };
+    if (event.item === 'burner' && camp.burnerOn) {
+      showToast('불이 켜진 버너는 수납할 수 없어요. 먼저 불을 꺼주세요.', '!');
+      return;
+    }
+    if (event.item === 'burner' && camp.meatStarted && !camp.mealPrepared) {
+      showToast('조리 중인 버너는 수납할 수 없어요. 요리를 먼저 마쳐주세요.', '!');
+      return;
+    }
+    if (event.item === 'table' && camp.mealPrepared && !camp.mealEaten) {
+      showToast('식사가 놓인 테이블은 수납할 수 없어요. 먼저 식사해주세요.', '!');
+      return;
+    }
+    if (event.item === 'table' && camp.coffeeBrewed && !camp.coffeeDrunk) {
+      showToast('커피가 놓인 테이블은 수납할 수 없어요. 먼저 커피를 마셔주세요.', '!');
+      return;
+    }
+    if (world.packCampItem(event.item)) {
+      camp[`${event.item}Stored`] = true;
+      currentCampTool = null;
+      showToast(`${names[event.item]}을 접어 수납했어요. 아래 버튼으로 다시 꺼낼 수 있어요.`, '□');
+    }
   }
   if (event.type === 'sat-down') {
     camp.seated = true;
