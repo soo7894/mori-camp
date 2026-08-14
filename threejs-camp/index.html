@@ -54,6 +54,14 @@
             <span class="chip-icon">♟</span>
             <div><small>오늘의 캠퍼</small><strong id="guest-label">3 / 8</strong></div>
           </div>
+          <button
+            class="help-button"
+            id="help-button"
+            type="button"
+            aria-label="게임 도움말 열기"
+            aria-haspopup="dialog"
+            aria-controls="help-modal"
+          ><b>?</b><span>도움말</span></button>
         </div>
       </header>
 
@@ -217,6 +225,55 @@
       <div class="camera-hint ui-layer" id="camera-hint">
         <span class="mouse-icon"></span>
         장비 드래그: 이동 · 더블클릭: 수납 · 빈 땅 드래그: 둘러보기
+      </div>
+
+      <div class="help-overlay" id="help-modal" hidden>
+        <section class="help-dialog" role="dialog" aria-modal="true" aria-labelledby="help-title">
+          <header class="help-head">
+            <div>
+              <small>HOW TO PLAY</small>
+              <h2 id="help-title">MORI CAMP 이용 방법</h2>
+            </div>
+            <button id="help-close" type="button" aria-label="도움말 닫기">×</button>
+          </header>
+
+          <p class="help-intro">캠핑장을 키우고, 오른쪽 빈 사이트에서 캠핑의 하루를 직접 완성하는 게임입니다.</p>
+
+          <div class="help-grid">
+            <article class="help-card">
+              <span class="help-card-icon">⌂</span>
+              <div><h3>캠핑장 운영</h3><p>예약을 받아 골드와 평판을 얻고, 숙박 시설을 건설·업그레이드하세요. 청결도가 낮아지면 만족도도 떨어집니다.</p></div>
+            </article>
+            <article class="help-card">
+              <span class="help-card-icon">♨</span>
+              <div><h3>직접 캠핑 · 25단계</h3><p>화면 왼쪽의 <b>MY CAMP</b> 안내와 아래 장비 버튼을 따라가세요. 클릭과 반복 행동으로 단계가 완료됩니다.</p></div>
+            </article>
+          </div>
+
+          <div class="help-route" aria-label="직접 캠핑 진행 순서">
+            <span><b>1</b> 텐트·말뚝</span><i>→</i>
+            <span><b>2</b> 가구·버너</span><i>→</i>
+            <span><b>3</b> 요리·커피</span><i>→</i>
+            <span><b>4</b> 설거지·건조</span><i>→</i>
+            <span><b>5</b> 조명·불멍·취침</span>
+          </div>
+
+          <div class="help-controls">
+            <h3>기본 조작</h3>
+            <ul>
+              <li><b>빈 땅 드래그</b><span>카메라 회전</span></li>
+              <li><b>휠</b><span>확대·축소</span></li>
+              <li><b>장비 드래그</b><span>테이블·의자·버너 이동</span></li>
+              <li><b>장비 더블클릭</b><span>접어서 수납</span></li>
+              <li><b>ESC</b><span>배치 취소·도움말 닫기</span></li>
+            </ul>
+          </div>
+
+          <footer class="help-foot">
+            <span>진행 상황은 이 브라우저에 자동 저장됩니다.</span>
+            <button id="help-confirm" type="button">게임 계속하기</button>
+          </footer>
+        </section>
       </div>
 
       <div id="toast" class="toast ui-layer" role="status" aria-live="polite">

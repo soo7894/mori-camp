@@ -123,6 +123,7 @@ let currentCampTool = null;
 let lastSuggestedAction = null;
 let lastSimulationTime = performance.now();
 let lastHour = Math.floor(state.minutes / 60);
+let isHelpOpen = false;
 
 const dom = {
   loading: $('#loading-screen'),
@@ -159,6 +160,9 @@ const dom = {
   campTaskTitle: $('#camp-task-title'),
   campTaskText: $('#camp-task-text'),
   campTool: $('#camp-tool-label'),
+  helpModal: $('#help-modal'),
+  helpButton: $('#help-button'),
+  helpClose: $('#help-close'),
 };
 
 const world = new CampWorld($('#game-canvas'), {
@@ -219,6 +223,19 @@ function updateUI() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...state, selectedFacilityId: null }));
+}
+
+function openHelp() {
+  isHelpOpen = true;
+  dom.helpModal.hidden = false;
+  dom.helpClose.focus();
+}
+
+function closeHelp() {
+  if (!isHelpOpen) return;
+  isHelpOpen = false;
+  dom.helpModal.hidden = true;
+  dom.helpButton.focus();
 }
 
 function showToast(message, icon = '✓') {
@@ -751,6 +768,7 @@ function finishDay() {
 }
 
 function advanceSimulation(deltaSeconds) {
+  if (isHelpOpen) return;
   state.minutes += deltaSeconds * 4.2;
   const hour = Math.floor(state.minutes / 60);
   if (hour !== lastHour) {
@@ -805,9 +823,19 @@ $('#camp-reset').addEventListener('click', () => {
   saveState();
   window.location.reload();
 });
+dom.helpButton.addEventListener('click', openHelp);
+dom.helpClose.addEventListener('click', closeHelp);
+$('#help-confirm').addEventListener('click', closeHelp);
+dom.helpModal.addEventListener('click', (event) => {
+  if (event.target === dom.helpModal) closeHelp();
+});
 
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
+    if (isHelpOpen) {
+      closeHelp();
+      return;
+    }
     handleFacilitySelection(null);
     world.cancelPlacement();
     currentCampTool = null;
