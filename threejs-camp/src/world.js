@@ -158,7 +158,7 @@ export class CampWorld {
     this.draggedCampItem = null;
     this.dragOffset = new THREE.Vector3();
     this.dragMoved = false;
-    this.focusTarget = new THREE.Vector3(0, 0, 0);
+    this.focusTarget = new THREE.Vector3(2.0, 0, 0);
     this.focusAmount = 0;
     this.activity = null;
     this.campTool = null;
@@ -180,11 +180,11 @@ export class CampWorld {
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;
 
-    this.frustum = 17;
+    this.frustum = 19.5;
     this.camera = new THREE.OrthographicCamera(-18, 18, 18, -18, 0.1, 120);
-    this.camera.position.set(23, 20, 24);
-    this.camera.zoom = 1.02;
-    this.camera.lookAt(0, 0, 0);
+    this.camera.position.set(27, 23, 28);
+    this.camera.zoom = 1.0;
+    this.camera.lookAt(2.0, 0, 0);
 
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = true;
@@ -196,7 +196,7 @@ export class CampWorld {
     this.controls.maxPolarAngle = Math.PI * 0.39;
     this.controls.minAzimuthAngle = -Math.PI * 0.83;
     this.controls.maxAzimuthAngle = Math.PI * 0.05;
-    this.controls.target.set(0, 0.2, 0);
+    this.controls.target.set(2.0, 0.2, 0);
 
     this.hemiLight = new THREE.HemisphereLight(0xfff4d2, 0x426b5a, 1.65);
     this.scene.add(this.hemiLight);
@@ -250,12 +250,12 @@ export class CampWorld {
   }
 
   _createDiorama() {
-    const base = roundedMesh(25.5, 1.3, 19.5, palette.soil, 0.55);
+    const base = roundedMesh(33.0, 1.3, 24.0, palette.soil, 0.62);
     base.position.y = -0.92;
     base.receiveShadow = true;
     this.world.add(base);
 
-    const grass = roundedMesh(24.5, 0.58, 18.5, palette.grass, 0.46);
+    const grass = roundedMesh(32.0, 0.58, 23.0, palette.grass, 0.52);
     grass.position.y = -0.2;
     grass.receiveShadow = true;
     this.world.add(grass);
@@ -263,6 +263,14 @@ export class CampWorld {
     const grassPatch = roundedMesh(9.5, 0.16, 5.6, palette.grassLight, 0.28);
     grassPatch.position.set(4.8, 0.13, -4.5);
     this.world.add(grassPatch);
+
+    const westClearing = roundedMesh(7.4, 0.14, 5.2, palette.grassLight, 0.28);
+    westClearing.position.set(-11.0, 0.13, -4.9);
+    const eastClearing = roundedMesh(7.6, 0.14, 5.4, palette.grassLight, 0.28);
+    eastClearing.position.set(11.3, 0.13, -4.9);
+    const northClearing = roundedMesh(8.2, 0.14, 4.8, 0x86b774, 0.28);
+    northClearing.position.set(10.7, 0.13, 4.7);
+    this.world.add(westClearing, eastClearing, northClearing);
 
     const lakeBed = new THREE.Mesh(
       new THREE.CircleGeometry(4.15, 48),
@@ -300,10 +308,13 @@ export class CampWorld {
     dock.rotation.y = -0.18;
     this.world.add(dock);
 
-    this._addPath(0.4, 0.18, 2.4, 15.5, 0, 0.2);
-    this._addPath(0.4, 0.2, 12.7, 2.0, -4.1, 0.2);
-    this._addPath(0.4, 0.2, 8.6, 1.55, 4.1, 0.2);
+    this._addPath(0.4, 0.18, 2.4, 19.4, 0, 0.2);
+    this._addPath(-1.8, 0.2, 18.2, 2.0, -4.1, 0.2);
+    this._addPath(2.3, 0.2, 12.4, 1.55, 4.1, 0.2);
     this._addPath(-0.2, 0.18, 1.5, 9.4, 0.2, 0.2, Math.PI / 2);
+    this._addPath(-10.2, 0.18, 6.8, 1.35, -4.8, 0.16, -0.05);
+    this._addPath(10.6, 0.18, 7.4, 1.35, -4.8, 0.16, 0.04);
+    this._addPath(10.8, 0.18, 1.35, 7.8, 0.0, 0.16, 0.02);
 
     const entrance = roundedMesh(5.8, 0.35, 1.6, palette.sand, 0.25);
     entrance.position.set(5.8, 0.08, 7.8);
@@ -321,12 +332,13 @@ export class CampWorld {
 
   _createLandscape() {
     const treePositions = [
-      [-10.2, -7.0, 1.2], [-8.0, -7.7, 0.85], [-5.8, -7.9, 1.0],
-      [-10.5, -3.7, 0.9], [-10.7, 0.0, 1.15], [-10.2, 7.0, 1.1],
-      [-8.9, 7.6, 0.8], [-3.1, 8.0, 0.85], [0.2, 8.1, 1.05],
-      [3.8, 8.1, 0.9], [8.5, 7.3, 1.2], [10.5, 5.5, 0.8],
-      [10.8, 1.8, 1.0], [10.5, -2.0, 0.9], [10.0, -6.6, 1.15],
-      [7.5, -7.9, 0.9], [4.5, -8.1, 0.75], [-8.6, 2.2, 0.62],
+      [-14.4, -8.7, 1.2], [-11.4, -10.1, 0.85], [-6.8, -10.5, 1.0],
+      [-14.6, -4.1, 0.9], [-14.8, 0.1, 1.15], [-14.1, 8.5, 1.1],
+      [-10.8, 10.2, 0.8], [-5.1, 10.5, 0.85], [0.2, 10.7, 1.05],
+      [5.2, 10.5, 0.9], [10.8, 9.5, 1.2], [14.2, 6.5, 0.8],
+      [14.5, 2.0, 1.0], [14.4, -2.3, 0.9], [13.6, -8.1, 1.15],
+      [9.2, -10.2, 0.9], [4.3, -10.6, 0.75], [-8.6, 2.2, 0.62],
+      [-12.9, 4.0, 0.72], [12.8, 0.4, 0.68], [-2.7, -10.3, 0.66],
     ];
     treePositions.forEach(([x, z, scale], index) => {
       this.world.add(this._createTree(x, z, scale, index % 3));
@@ -334,16 +346,16 @@ export class CampWorld {
 
     for (let index = 0; index < 22; index += 1) {
       const angle = this.random() * Math.PI * 2;
-      const radius = 7 + this.random() * 4.5;
+      const radius = 9 + this.random() * 6.0;
       const x = Math.cos(angle) * radius;
       const z = Math.sin(angle) * radius * 0.72;
-      if (Math.abs(x) < 2 || z > 7 || z < -7.4) continue;
+      if (Math.abs(x) < 2 || z > 10 || z < -10.4) continue;
       const flower = this._createFlower(index % 4);
       flower.position.set(x, 0.2, z);
       this.world.add(flower);
     }
 
-    const rockPositions = [[-8.6, 5.0], [-4.3, 6.7], [8.1, -5.7], [9.1, 3.4], [-8.9, -4.7]];
+    const rockPositions = [[-12.6, 6.1], [-6.6, 8.7], [9.0, -8.1], [12.6, 3.5], [-12.8, -5.6], [5.6, 9.1]];
     rockPositions.forEach(([x, z], index) => {
       const rock = new THREE.Mesh(
         new THREE.DodecahedronGeometry(0.38 + (index % 2) * 0.14, 0),
@@ -1837,9 +1849,9 @@ export class CampWorld {
     if (mode === 'camp') {
       this.focusOn(this.handsOn.origin, 0.58);
     } else {
-      this.focusTarget.set(0, 0.25, 0);
+      this.focusTarget.set(2.0, 0.25, 0);
       this.focusAmount = 1;
-      this.desiredZoom = 1.02;
+      this.desiredZoom = 1.0;
     }
   }
 
