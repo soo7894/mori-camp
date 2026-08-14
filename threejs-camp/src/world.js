@@ -319,6 +319,8 @@ export class CampWorld {
     entrance.position.set(5.8, 0.08, 7.8);
     entrance.rotation.y = -0.12;
     this.world.add(entrance);
+
+    this._createForestSites();
   }
 
   _addPath(x, y, width, depth, z, height = 0.18, rotation = 0) {
@@ -329,6 +331,53 @@ export class CampWorld {
     this.world.add(path);
   }
 
+  _createForestSites() {
+    const naturalSites = [
+      [-11.4, 4.6, 0x8dbc78],
+      [-11.2, -4.6, 0x84b774],
+      [11.3, -4.7, 0x8dbc78],
+      [-7.8, -7.7, 0x84b774],
+    ];
+    naturalSites.forEach(([x, z, color], index) => {
+      const clearing = new THREE.Mesh(
+        new THREE.CircleGeometry(index === 3 ? 2.35 : 2.65, 28),
+        createMaterial(color, { flatShading: false }),
+      );
+      clearing.rotation.x = -Math.PI / 2;
+      clearing.position.set(x, 0.115, z);
+      clearing.receiveShadow = true;
+      this.world.add(clearing);
+
+      for (let stoneIndex = 0; stoneIndex < 6; stoneIndex += 1) {
+        const angle = (stoneIndex / 6) * Math.PI * 2 + index * 0.31;
+        const stone = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(0.1 + (stoneIndex % 2) * 0.035, 0),
+          createMaterial(stoneIndex % 2 ? 0xc8c9af : 0xaeb59c),
+        );
+        stone.scale.set(1.35, 0.55, 1);
+        stone.position.set(x + Math.cos(angle) * 2.45, 0.21, z + Math.sin(angle) * 2.15);
+        this.world.add(stone);
+      }
+    });
+
+    const deck = new THREE.Group();
+    const deckX = 11.7;
+    const deckZ = 4.5;
+    const deckBase = roundedMesh(5.7, 0.22, 4.7, 0x8f6641, 0.16);
+    deckBase.position.y = 0.2;
+    deck.add(deckBase);
+    for (let index = 0; index < 12; index += 1) {
+      const plank = roundedMesh(5.35, 0.08, 0.31, index % 2 ? 0xb98651 : 0xc49259, 0.025);
+      plank.position.set(0, 0.35, -2.0 + index * 0.36);
+      deck.add(plank);
+    }
+    const step = roundedMesh(1.45, 0.2, 0.7, 0x9d7047, 0.1);
+    step.position.set(0, 0.1, 2.65);
+    deck.add(step);
+    deck.position.set(deckX, 0, deckZ);
+    this.world.add(setShadow(deck));
+  }
+
   _createLandscape() {
     const treePositions = [
       [-14.4, -8.7, 1.2], [-11.4, -10.1, 0.85], [-6.8, -10.5, 1.0],
@@ -337,7 +386,12 @@ export class CampWorld {
       [5.2, 10.5, 0.9], [10.8, 9.5, 1.2], [14.2, 6.5, 0.8],
       [14.5, 2.0, 1.0], [14.4, -2.3, 0.9], [13.6, -8.1, 1.15],
       [9.2, -10.2, 0.9], [4.3, -10.6, 0.75], [-8.6, 2.2, 0.62],
-      [-12.9, 4.0, 0.72], [12.8, 0.4, 0.68], [-2.7, -10.3, 0.66],
+      [12.8, 0.4, 0.68], [-2.7, -10.3, 0.66],
+      [-14.0, 3.0, 0.8], [-13.8, 6.5, 0.92], [-10.5, 7.5, 0.72], [-8.6, 5.4, 0.78],
+      [-13.9, -3.0, 0.78], [-13.5, -6.8, 0.9], [-10.2, -7.6, 0.7], [-8.4, -4.9, 0.74],
+      [8.5, -4.5, 0.72], [10.3, -7.5, 0.82], [13.7, -6.6, 0.88], [14.0, -3.3, 0.72],
+      [8.7, 3.3, 0.72], [9.5, 7.1, 0.86], [13.2, 7.3, 0.9], [14.5, 4.0, 0.74],
+      [-10.8, -9.6, 0.68], [-5.1, -9.5, 0.7], [-5.2, -6.8, 0.64],
     ];
     treePositions.forEach(([x, z, scale], index) => {
       this.world.add(this._createTree(x, z, scale, index % 3));

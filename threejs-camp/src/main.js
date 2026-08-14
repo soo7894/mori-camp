@@ -67,7 +67,15 @@ const buildCatalog = {
   caravan: { cost: 1100, capacity: 4, reputation: 20 },
 };
 
-const buildPlots = [
+const forestBuildPlots = [
+  [-11.4, 4.6, 0.08],
+  [11.7, 4.5, -0.12],
+  [-11.2, -4.6, -0.08],
+  [11.3, -4.7, 0.05],
+  [-7.8, -7.7, 0.12],
+];
+
+const centralBuildPlots = [
   [-5.4, 0.3, -0.04],
   [2.5, 3.55, 0.12],
   [6.7, 3.45, -0.2],
@@ -75,11 +83,6 @@ const buildPlots = [
   [-1.8, -5.6, 0.05],
   [-6.7, -5.2, -0.1],
   [7.1, 0.4, 0.05],
-  [-11.2, -4.6, -0.08],
-  [-11.4, 4.6, 0.08],
-  [-7.8, -7.7, 0.12],
-  [11.3, -4.7, 0.05],
-  [11.7, 4.5, -0.12],
 ];
 
 const bookings = [
@@ -272,8 +275,12 @@ function nextBooking() {
   tags[2].textContent = `평판 +${booking.reputation}`;
 }
 
-function findBuildPlot() {
-  return buildPlots.find(([x, z]) => {
+function findBuildPlot(type) {
+  const prefersForest = ['tent', 'glamping', 'caravan'].includes(type);
+  const plots = prefersForest
+    ? [...forestBuildPlots, ...centralBuildPlots]
+    : [...centralBuildPlots, ...forestBuildPlots];
+  return plots.find(([x, z]) => {
     return state.facilities.every((facility) => {
       const dx = facility.position[0] - x;
       const dz = facility.position[1] - z;
@@ -293,7 +300,7 @@ function buildFacility(type) {
     showToast('골드가 부족해요. 예약을 더 받아보세요!', '!');
     return;
   }
-  const plot = findBuildPlot();
+  const plot = findBuildPlot(type);
   if (!plot) {
     showToast('빈 건설 구역이 없어요. 다음 확장을 기다려주세요.', '!');
     return;
