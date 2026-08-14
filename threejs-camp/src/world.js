@@ -170,7 +170,6 @@ export class CampWorld {
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0xefcd67);
-    this.scene.fog = new THREE.Fog(0xefcd67, 30, 58);
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.8));
@@ -1915,7 +1914,6 @@ export class CampWorld {
     const sky = nightColor.clone().lerp(dayColor, daylight);
     sky.lerp(sunsetColor, Math.max(0, sunset) * 0.45);
     this.scene.background.copy(sky);
-    this.scene.fog.color.copy(sky);
     this.hemiLight.intensity = 0.55 + daylight * 1.15;
     this.sunLight.intensity = 0.35 + daylight * 2.75;
     this.sunLight.color.set(sunset > 0.25 ? 0xffb57a : 0xfff0c4);
