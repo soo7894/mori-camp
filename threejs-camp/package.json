@@ -1,21 +1,24 @@
 {
-  "name": "mori-camp-threejs",
-  "version": "1.0.0",
+  "name": "forest-pause",
   "private": true,
+  "version": "0.1.0",
   "type": "module",
-  "main": "electron/main.cjs",
+  "packageManager": "pnpm@11.19.0",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
-    "preview": "vite preview --host 127.0.0.1",
-    "desktop": "pnpm build && electron .",
-    "build:win": "pnpm build && node scripts/build-windows.cjs"
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build --base=./",
+    "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "three": "0.185.1"
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.4.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "three": "^0.179.1"
   },
   "devDependencies": {
-    "electron": "39.1.2",
-    "vite": "8.2.1"
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^7.1.2"
   }
 }
