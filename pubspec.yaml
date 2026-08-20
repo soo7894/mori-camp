@@ -1,0 +1,20 @@
+name: camp_tycoon
+description: A cozy low-poly 3D campground management game made with Flutter.
+publish_to: "none"
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.3.2 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  three_js: ^0.3.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true

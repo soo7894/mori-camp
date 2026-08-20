@@ -1,0 +1,11 @@
+{
+  "name": "오늘은 캠핑",
+  "short_name": "캠핑 타이쿤",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#bfe0e2",
+  "theme_color": "#2f6b4f",
+  "description": "아늑한 3D 캠핑장 경영 게임",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}
